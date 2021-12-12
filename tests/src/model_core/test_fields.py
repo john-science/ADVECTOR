@@ -56,7 +56,7 @@ def test_x_is_circular():
     assert not x_is_circular(np.linspace(10, 40, 50))
     assert not x_is_circular(np.arange(-181, 181))
     assert not x_is_circular(np.array([0]))
-    assert False
+    assert False  # TODO: JOHN! TESTING! THIS SHOULD FAIL THE BUILD!
 
 
 def field_element_is_null(gp: dict, field: dict) -> np.ndarray:
