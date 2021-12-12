@@ -1,10 +1,13 @@
 import sys
+
 try:
     from setuptools import Extension
     from setuptools.command.build_ext import (  # noqa: N812
-            build_ext as BaseBuildExtCommand)
+        build_ext as BaseBuildExtCommand,
+    )
 
 except ImportError:
+
     class Extension:
         pass
 
@@ -14,6 +17,7 @@ except ImportError:
 
 def count_down_delay(delay):
     from time import sleep
+
     while delay:
         sys.stdout.write("Continuing in %d seconds...   \r" % delay)
         sys.stdout.flush()
@@ -27,6 +31,7 @@ DASH_SEPARATOR = 75 * "-"
 
 def setup(*args, **kwargs):
     from setuptools import setup
+
     try:
         setup(*args, **kwargs)
     except KeyboardInterrupt:
@@ -35,17 +40,21 @@ def setup(*args, **kwargs):
         raise
     except Exception:
         print(DASH_SEPARATOR)
-        print("Sorry, your build failed. Try rerunning configure.py with "
-                "different options.")
+        print(
+            "Sorry, your build failed. Try rerunning configure.py with "
+            "different options."
+        )
         print(DASH_SEPARATOR)
         raise
 
 
 def get_numpy_incpath():
     from imp import find_module
+
     # avoid actually importing numpy, it screws up distutils
     file, pathname, descr = find_module("numpy")
     from os.path import join
+
     return join(pathname, "core", "include")
 
 
@@ -104,6 +113,7 @@ class NumpyBuildExtCommand(BaseBuildExtCommand):
 
 # {{{ tools
 
+
 def flatten(lst):
     """For an iterable of sub-iterables, generate each member of each
     sub-iterable in turn, i.e. a flattened version of that super-iterable.
@@ -119,18 +129,24 @@ def humanize(sym_str):
     words = sym_str.lower().replace("_", " ").split(" ")
     return " ".join([word.capitalize() for word in words])
 
+
 # }}}
 
 
 # {{{ siteconf handling
 
+
 def get_config(schema=None, warn_about_no_config=True):
     if schema is None:
         from setup import get_config_schema
+
         schema = get_config_schema()
 
-    if (not schema.have_config() and not schema.have_global_config()
-            and warn_about_no_config):
+    if (
+        not schema.have_config()
+        and not schema.have_global_config()
+        and warn_about_no_config
+    ):
         print("*************************************************************")
         print("*** I have detected that you have not run configure.py.")
         print("*************************************************************")
@@ -200,14 +216,15 @@ def hack_distutils(debug=False, fast_link=True, what_opt=3):
             for varname in ["LDSHARED", "BLDSHARED"]:
                 ldsharedflags = cvars.get(varname)
                 if ldsharedflags:
-                    ldsharedflags = remove_prefixes(ldsharedflags.split(),
-                            ["-Wl,-O"])
+                    ldsharedflags = remove_prefixes(ldsharedflags.split(), ["-Wl,-O"])
                     cvars[varname] = str.join(" ", ldsharedflags)
+
 
 # }}}
 
 
 # {{{ configure guts
+
 
 def default_or(a, b):
     if a is None:
@@ -225,6 +242,7 @@ def expand_str(s, options):
             repl = options[sym]
         except KeyError:
             from os import environ
+
             repl = environ[sym]
 
         return expand_str(repl, options)
@@ -251,8 +269,7 @@ def expand_value(v, options):
 
 
 def expand_options(options):
-    return dict(
-            (k, expand_value(v, options)) for k, v in options.items())
+    return dict((k, expand_value(v, options)) for k, v in options.items())
 
 
 class ConfigSchema:
@@ -263,6 +280,7 @@ class ConfigSchema:
         self.conf_file = conf_file
 
         from os.path import expanduser
+
         self.user_conf_file = expanduser("~/.aksetup-defaults.py")
 
         if not sys.platform.lower().startswith("win"):
@@ -272,6 +290,7 @@ class ConfigSchema:
 
     def get_conf_file(self):
         import os
+
         return os.path.join(self.conf_dir, self.conf_file)
 
     def set_conf_dir(self, conf_dir):
@@ -348,6 +367,7 @@ class ConfigSchema:
 
     def have_global_config(self):
         import os
+
         result = os.access(self.user_conf_file, os.R_OK)
 
         if self.global_conf_file is not None:
@@ -357,6 +377,7 @@ class ConfigSchema:
 
     def have_config(self):
         import os
+
         return os.access(self.get_conf_file(), os.R_OK)
 
     def update_from_python_snippet(self, config, py_snippet, filename):
@@ -369,8 +390,7 @@ class ConfigSchema:
             elif key == "__builtins__":
                 pass
             else:
-                raise KeyError("invalid config key in %s: %s" % (
-                        filename, key))
+                raise KeyError("invalid config key in %s: %s" % (filename, key))
 
     def update_config_from_and_modify_command_line(self, config, argv):
         cfg_prefix = "--conf:"
@@ -382,7 +402,8 @@ class ConfigSchema:
             if arg.startswith(cfg_prefix):
                 del argv[i]
                 self.update_from_python_snippet(
-                        config, arg[len(cfg_prefix):], "<command line>")
+                    config, arg[len(cfg_prefix) :], "<command line>"
+                )
             else:
                 i += 1
 
@@ -390,6 +411,7 @@ class ConfigSchema:
 
     def read_config(self):
         import os
+
         cfile = self.get_conf_file()
 
         result = self.get_default_config_with_files()
@@ -423,8 +445,9 @@ class ConfigSchema:
         outf.close()
 
     def make_substitutions(self, config):
-        return dict((opt.name, opt.value_to_str(config[opt.name]))
-                for opt in self.options)
+        return dict(
+            (opt.name, opt.value_to_str(config[opt.name])) for opt in self.options
+        )
 
 
 class Option(object):
@@ -438,13 +461,14 @@ class Option(object):
 
     def metavar(self):
         last_underscore = self.name.rfind("_")
-        return self.name[last_underscore+1:]
+        return self.name[last_underscore + 1 :]
 
     def get_help(self, default):
         result = self.help
         if self.default:
             result += " (default: %s)" % self.value_to_str(
-                    default_or(default, self.default))
+                default_or(default, self.default)
+            )
         return result
 
     def value_to_str(self, default):
@@ -454,9 +478,12 @@ class Option(object):
         default = default_or(default, self.default)
         default_str = self.value_to_str(default)
         parser.add_option(
-            "--" + self.as_option(), dest=self.name,
+            "--" + self.as_option(),
+            dest=self.name,
             default=default_str,
-            metavar=self.metavar(), help=self.get_help(default))
+            metavar=self.metavar(),
+            help=self.get_help(default),
+        )
 
     def take_from_configparser(self, options):
         return getattr(options, self.name)
@@ -483,7 +510,8 @@ class Switch(Option):
             dest=self.name,
             help=self.get_help(default),
             default=default,
-            action=action)
+            action=action,
+        )
 
 
 class StringListOption(Option):
@@ -503,6 +531,7 @@ class StringListOption(Option):
         else:
             if opt:
                 import re
+
                 sep = re.compile(r"(?<!\\),")
                 result = sep.split(opt)
                 result = [i.replace(r"\,", ",") for i in result]
@@ -513,28 +542,45 @@ class StringListOption(Option):
 
 class IncludeDir(StringListOption):
     def __init__(self, lib_name, default=None, human_name=None, help=None):
-        StringListOption.__init__(self, "%s_INC_DIR" % lib_name, default,
-                help=help or ("Include directories for %s"
-                % (human_name or humanize(lib_name))))
+        StringListOption.__init__(
+            self,
+            "%s_INC_DIR" % lib_name,
+            default,
+            help=help
+            or ("Include directories for %s" % (human_name or humanize(lib_name))),
+        )
 
 
 class LibraryDir(StringListOption):
     def __init__(self, lib_name, default=None, human_name=None, help=None):
-        StringListOption.__init__(self, "%s_LIB_DIR" % lib_name, default,
-                help=help or ("Library directories for %s"
-                % (human_name or humanize(lib_name))))
+        StringListOption.__init__(
+            self,
+            "%s_LIB_DIR" % lib_name,
+            default,
+            help=help
+            or ("Library directories for %s" % (human_name or humanize(lib_name))),
+        )
 
 
 class Libraries(StringListOption):
     def __init__(self, lib_name, default=None, human_name=None, help=None):
-        StringListOption.__init__(self, "%s_LIBNAME" % lib_name, default,
-                help=help or ("Library names for %s (without lib or .so)"
-                % (human_name or humanize(lib_name))))
+        StringListOption.__init__(
+            self,
+            "%s_LIBNAME" % lib_name,
+            default,
+            help=help
+            or (
+                "Library names for %s (without lib or .so)"
+                % (human_name or humanize(lib_name))
+            ),
+        )
+
 
 # }}}
 
 
 # {{{ configure options for specific software
+
 
 class BoostLibraries(Libraries):
     def __init__(self, lib_base_name, default_lib_name=None):
@@ -544,14 +590,18 @@ class BoostLibraries(Libraries):
             else:
                 default_lib_name = "boost_%s" % lib_base_name
 
-        Libraries.__init__(self, "BOOST_%s" % lib_base_name.upper(),
-                [default_lib_name],
-                help="Library names for Boost C++ %s library (without lib or .so)"
-                % humanize(lib_base_name))
+        Libraries.__init__(
+            self,
+            "BOOST_%s" % lib_base_name.upper(),
+            [default_lib_name],
+            help="Library names for Boost C++ %s library (without lib or .so)"
+            % humanize(lib_base_name),
+        )
 
 
-def set_up_shipped_boost_if_requested(project_name, conf, source_path=None,
-        boost_chrono=False):
+def set_up_shipped_boost_if_requested(
+    project_name, conf, source_path=None, boost_chrono=False
+):
     """Set up the package to use a shipped version of Boost.
 
     Return a tuple of a list of extra C files to build and extra
@@ -568,8 +618,10 @@ def set_up_shipped_boost_if_requested(project_name, conf, source_path=None,
     if conf["USE_SHIPPED_BOOST"]:
         if not exists("%s/boost/version.hpp" % source_path):
             print(DASH_SEPARATOR)
-            print("The shipped Boost library was not found, but "
-                    "USE_SHIPPED_BOOST is True.")
+            print(
+                "The shipped Boost library was not found, but "
+                "USE_SHIPPED_BOOST is True."
+            )
             print("(The files should be under %s/.)" % source_path)
             print(DASH_SEPARATOR)
             print("If you got this package from git, you probably want to do")
@@ -594,50 +646,54 @@ def set_up_shipped_boost_if_requested(project_name, conf, source_path=None,
         conf["BOOST_THREAD_LIBNAME"] = []
 
         from glob import glob
-        source_files = (glob(source_path + "/libs/*/*/*/*.cpp")
-                + glob(source_path + "/libs/*/*/*.cpp")
-                + glob(source_path + "/libs/*/*.cpp"))
+
+        source_files = (
+            glob(source_path + "/libs/*/*/*/*.cpp")
+            + glob(source_path + "/libs/*/*/*.cpp")
+            + glob(source_path + "/libs/*/*.cpp")
+        )
 
         # make sure next line succeeds even on Windows
         source_files = [f.replace("\\", "/") for f in source_files]
 
-        source_files = [f for f in source_files
-                if not f.startswith(source_path + "/libs/thread/src")]
+        source_files = [
+            f
+            for f in source_files
+            if not f.startswith(source_path + "/libs/thread/src")
+        ]
 
         if sys.platform == "win32":
-            source_files += glob(
-                    source_path + "/libs/thread/src/win32/*.cpp")
-            source_files += glob(
-                    source_path + "/libs/thread/src/tss_null.cpp")
+            source_files += glob(source_path + "/libs/thread/src/win32/*.cpp")
+            source_files += glob(source_path + "/libs/thread/src/tss_null.cpp")
         else:
-            source_files += glob(
-                    source_path + "/libs/thread/src/pthread/*.cpp")
+            source_files += glob(source_path + "/libs/thread/src/pthread/*.cpp")
 
-        source_files = [f for f in source_files
-                if not f.endswith("once_atomic.cpp")]
+        source_files = [f for f in source_files if not f.endswith("once_atomic.cpp")]
 
         from os.path import isdir
+
         main_boost_inc = source_path + "/boost"
         bpl_project_boost_inc = source_path + "/%sboost" % project_name
 
         if not isdir(bpl_project_boost_inc):
             try:
                 from os import symlink
+
                 symlink("boost", bpl_project_boost_inc)
             except (ImportError, OSError):
                 from shutil import copytree
+
                 print("Copying files, hang on... (do not interrupt)")
                 copytree(main_boost_inc, bpl_project_boost_inc)
 
         defines = {
-                # do not pick up libboost link dependency on windows
-                "BOOST_ALL_NO_LIB": 1,
-                "BOOST_THREAD_BUILD_DLL": 1,
-
-                "BOOST_MULTI_INDEX_DISABLE_SERIALIZATION": 1,
-                "BOOST_PYTHON_SOURCE": 1,
-                "boost": "%sboost" % project_name,
-                }
+            # do not pick up libboost link dependency on windows
+            "BOOST_ALL_NO_LIB": 1,
+            "BOOST_THREAD_BUILD_DLL": 1,
+            "BOOST_MULTI_INDEX_DISABLE_SERIALIZATION": 1,
+            "BOOST_PYTHON_SOURCE": 1,
+            "boost": "%sboost" % project_name,
+        }
 
         if boost_chrono is False:
             defines["BOOST_THREAD_DONT_USE_CHRONO"] = 1
@@ -655,19 +711,25 @@ def make_boost_base_options():
     return [
         IncludeDir("BOOST", []),
         LibraryDir("BOOST", []),
-        Option("BOOST_COMPILER", default="gcc43",
-            help="The compiler with which Boost C++ was compiled, e.g. gcc43"),
-        ]
+        Option(
+            "BOOST_COMPILER",
+            default="gcc43",
+            help="The compiler with which Boost C++ was compiled, e.g. gcc43",
+        ),
+    ]
+
 
 # }}}
 
 
 # {{{ configure frontend
 
+
 def configure_frontend():
     from optparse import OptionParser
 
     from setup import get_config_schema
+
     schema = get_config_schema()
     if schema.have_config():
         print("************************************************************")
@@ -680,19 +742,26 @@ def configure_frontend():
     description = "generate a configuration file for this software package"
     parser = OptionParser(description=description)
     parser.add_option(
-            "--python-exe", dest="python_exe", default=sys.executable,
-            help="Which Python interpreter to use", metavar="PATH")
+        "--python-exe",
+        dest="python_exe",
+        default=sys.executable,
+        help="Which Python interpreter to use",
+        metavar="PATH",
+    )
 
-    parser.add_option("--prefix", default=None,
-            help="Ignored")
+    parser.add_option("--prefix", default=None, help="Ignored")
     parser.add_option("--enable-shared", help="Ignored", action="store_false")
     parser.add_option("--disable-static", help="Ignored", action="store_false")
-    parser.add_option("--update-user",
-            help="Update user config file (%s)" % schema.user_conf_file,
-            action="store_true")
-    parser.add_option("--update-global",
-            help="Update global config file (%s)" % schema.global_conf_file,
-            action="store_true")
+    parser.add_option(
+        "--update-user",
+        help="Update user config file (%s)" % schema.user_conf_file,
+        action="store_true",
+    )
+    parser.add_option(
+        "--update-global",
+        help="Update global config file (%s)" % schema.global_conf_file,
+        action="store_true",
+    )
 
     schema.add_to_configparser(parser, schema.read_config())
 
@@ -708,21 +777,24 @@ def configure_frontend():
         schema.update_global_config(config)
 
     import os
+
     if os.access("Makefile.in", os.F_OK):
         substs = schema.make_substitutions(config)
         substs["PYTHON_EXE"] = options.python_exe
 
         substitute(substs, "Makefile")
 
+
 # }}}
 
 
 def substitute(substitutions, fname):
     import re
+
     var_re = re.compile(r"\$\{([A-Za-z_0-9]+)\}")
     string_var_re = re.compile(r"\$str\{([A-Za-z_0-9]+)\}")
 
-    fname_in = fname+".in"
+    fname_in = fname + ".in"
     with open(fname_in, "r") as inf:
         lines = inf.readlines()
 
@@ -735,9 +807,10 @@ def substitute(substitutions, fname):
             if match:
                 varname = match.group(1)
                 line = (
-                        line[:match.start()]
-                        + str(substitutions[varname])
-                        + line[match.end():])
+                    line[: match.start()]
+                    + str(substitutions[varname])
+                    + line[match.end() :]
+                )
                 made_change = True
 
             match = string_var_re.search(line)
@@ -749,25 +822,29 @@ def substitute(substitutions, fname):
                 else:
                     subst = '"%s"' % subst
 
-                line = line[:match.start()] + subst + line[match.end():]
+                line = line[: match.start()] + subst + line[match.end() :]
                 made_change = True
         new_lines.append(line)
-    new_lines.insert(1, "# DO NOT EDIT THIS FILE -- "
-            "it was generated by configure.py\n")
+    new_lines.insert(
+        1, "# DO NOT EDIT THIS FILE -- " "it was generated by configure.py\n"
+    )
     new_lines.insert(2, "# %s\n" % (" ".join(sys.argv)))
     with open(fname, "w") as outf:
         outf.write("".join(new_lines))
 
     from os import stat, chmod
+
     infile_stat_res = stat(fname_in)
     chmod(fname, infile_stat_res.st_mode)
 
 
 # {{{ git bits
 
+
 def _run_git_command(cmd):
     git_error = None
     from subprocess import Popen, PIPE
+
     stdout = None
     try:
         popen = Popen(["git"] + cmd, stdout=PIPE)
@@ -797,6 +874,7 @@ def _run_git_command(cmd):
 
 def check_git_submodules():
     from os.path import isdir
+
     if not isdir(".git"):
         # not a git repository
         return
@@ -819,21 +897,23 @@ def check_git_submodules():
         sha, package = ln[1:].split(" ", 1)
 
         if package == "bpl-subset" or (
-                package.startswith("boost") and package.endswith("subset")):
+            package.startswith("boost") and package.endswith("subset")
+        ):
             # treated separately
             continue
 
         if status == "+":
-            pkg_warnings.append("version of '%s' is not what this "
-                    "outer package wants" % package)
+            pkg_warnings.append(
+                "version of '%s' is not what this " "outer package wants" % package
+            )
         elif status == "-":
-            pkg_warnings.append("subpackage '%s' is not initialized"
-                    % package)
+            pkg_warnings.append("subpackage '%s' is not initialized" % package)
         elif status == " ":
             pass
         else:
-            pkg_warnings.append("subpackage '%s' has unrecognized status '%s'"
-                    % package)
+            pkg_warnings.append(
+                "subpackage '%s' has unrecognized status '%s'" % package
+            )
 
     if pkg_warnings:
         print(DASH_SEPARATOR)
@@ -843,37 +923,40 @@ def check_git_submodules():
         print("")
         print(" $ git submodule update --init")
         print("")
-        print("to fetch what you are presently missing and "
-                "move on with your life.")
-        print("If you got this from a distributed package on the "
-                "net, that package is")
-        print("broken and should be fixed. Please inform whoever "
-                "gave you this package.")
+        print("to fetch what you are presently missing and " "move on with your life.")
+        print(
+            "If you got this from a distributed package on the " "net, that package is"
+        )
+        print(
+            "broken and should be fixed. Please inform whoever "
+            "gave you this package."
+        )
         print("")
         print("These issues were found:")
         for w in pkg_warnings:
             print("  %s" % w)
         print("")
-        print("I will try to initialize the submodules for you "
-                "after a short wait.")
+        print("I will try to initialize the submodules for you " "after a short wait.")
         print(DASH_SEPARATOR)
         print("Hit Ctrl-C now if you'd like to think about the situation.")
         print(DASH_SEPARATOR)
 
         from os.path import exists
+
         if not exists(".dirty-git-ok"):
             count_down_delay(delay=10)
-            stdout, git_error = _run_git_command(
-                    ["submodule", "update", "--init"])
+            stdout, git_error = _run_git_command(["submodule", "update", "--init"])
             if git_error is None:
                 print(DASH_SEPARATOR)
                 print("git submodules initialized successfully")
                 print(DASH_SEPARATOR)
 
+
 # }}}
 
 
 # {{{ pybind11
+
 
 def check_pybind11():
     try:
@@ -893,23 +976,26 @@ def check_pybind11():
         print(DASH_SEPARATOR)
 
         from aksetup_helper import count_down_delay
+
         count_down_delay(delay=10)
 
 
 # {{{ (modified) boilerplate from https://github.com/pybind/python_example/blob/2ed5a68759cd6ff5d2e5992a91f08616ef457b5c/setup.py  # noqa
+
 
 class get_pybind_include(object):  # noqa: N801
     """Helper class to determine the pybind11 include path
 
     The purpose of this class is to postpone importing pybind11
     until it is actually installed, so that the ``get_include()``
-    method can be invoked. """
+    method can be invoked."""
 
     def __init__(self, user=False):
         self.user = user
 
     def __str__(self):
         import pybind11
+
         return pybind11.get_include(self.user)
 
 
@@ -920,6 +1006,7 @@ def has_flag(compiler, flagname):
     the specified compiler.
     """
     import tempfile
+
     with tempfile.NamedTemporaryFile("w", suffix=".cpp", delete=False) as f:
         f.write("int main (int argc, char **argv) { return 0; }")
         fname = f.name
@@ -945,12 +1032,14 @@ def cpp_flag(compiler):
     elif has_flag(compiler, "-std=c++11"):
         return "-std=c++11"
     else:
-        raise RuntimeError("Unsupported compiler -- at least C++11 support "
-                           "is needed!")
+        raise RuntimeError(
+            "Unsupported compiler -- at least C++11 support " "is needed!"
+        )
 
 
 class PybindBuildExtCommand(NumpyBuildExtCommand):
     """A custom build extension for adding compiler-specific options."""
+
     c_opts = {
         "msvc": ["/EHsc"],
         "unix": [],
@@ -993,9 +1082,9 @@ class PybindBuildExtCommand(NumpyBuildExtCommand):
         finally:
             self.compiler._compile = prev__compile
 
+
 # }}}
 
 # }}}
 
 # vim: foldmethod=marker
-
