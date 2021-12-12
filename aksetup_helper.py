@@ -1,11 +1,13 @@
+import os
 import sys
+from os.path import exists
+
 
 try:
     from setuptools import Extension
     from setuptools.command.build_ext import (  # noqa: N812
         build_ext as BaseBuildExtCommand,
     )
-
 except ImportError:
 
     class Extension:
@@ -136,10 +138,102 @@ def humanize(sym_str):
 # {{{ siteconf handling
 
 
+def get_config_schema():
+    from aksetup_helper import (
+        ConfigSchema,
+        Option,
+        IncludeDir,
+        LibraryDir,
+        Libraries,
+        Switch,
+        StringListOption,
+    )
+
+    default_cxxflags = [
+        # Required for pybind11:
+        # https://pybind11.readthedocs.io/en/stable/faq.html#someclass-declared-with-greater-visibility-than-the-type-of-its-field-someclass-member-wattributes
+        "-fvisibility=hidden"
+    ]
+
+    if "darwin" in sys.platform:
+        import platform
+
+        osx_ver, _, _ = platform.mac_ver()
+        osx_ver = ".".join(osx_ver.split(".")[:2])
+
+        sysroot_paths = [
+            "/Applications/Xcode.app/Contents/Developer/Platforms/"
+            "MacOSX.platform/Developer/SDKs/MacOSX%s.sdk" % osx_ver,
+            "/Developer/SDKs/MacOSX%s.sdk" % osx_ver,
+        ]
+
+        default_libs = []
+        default_cxxflags = default_cxxflags + [
+            "-stdlib=libc++",
+            "-mmacosx-version-min=10.7",
+        ]
+
+        from os.path import isdir
+
+        for srp in sysroot_paths:
+            if isdir(srp):
+                default_cxxflags.extend(["-isysroot", srp])
+                break
+
+        default_ldflags = default_cxxflags[:] + ["-Wl,-framework,OpenCL"]
+
+    else:
+        default_libs = ["OpenCL"]
+        if "linux" in sys.platform:
+            # Requested in
+            # https://github.com/inducer/pyopencl/issues/132#issuecomment-314713573
+            # to make life with Altera FPGAs less painful by default.
+            default_ldflags = ["-Wl,--no-as-needed"]
+        else:
+            default_ldflags = []
+
+    return ConfigSchema(
+        [
+            Switch("CL_TRACE", False, "Enable OpenCL API tracing"),
+            Switch("CL_ENABLE_GL", False, "Enable OpenCL<->OpenGL interoperability"),
+            Switch(
+                "CL_USE_SHIPPED_EXT",
+                False,
+                "Use the pyopencl version of CL/cl_ext.h which includes"
+                + " a broader range of vendor-specific OpenCL extension attributes"
+                + " than the standard Khronos (or vendor specific) CL/cl_ext.h.",
+            ),
+            # This is here because the ocl-icd wheel declares but doesn't define
+            # clSetProgramSpecializationConstant as of 2021-05-22, and providing
+            # configuration options for this to pip install isn't easy. Being
+            # able to specify this means being able to build a PyOpenCL via pip install
+            # that'll work with an outdated ICD loader.
+            #
+            # (https://stackoverflow.com/q/677577)
+            # x-ref: https://github.com/inducer/meshmode/pull/194/checks?check_run_id=2647133257#step:5:27  # noqa: E501
+            # x-ref: https://github.com/isuruf/ocl-wheels/
+            Option(
+                "CL_PRETEND_VERSION",
+                os.environ.get("PYOPENCL_CL_PRETEND_VERSION", None),
+                "Dotted CL version (e.g. 1.2) which you'd like to use.",
+            ),
+            IncludeDir("CL", []),
+            LibraryDir("CL", []),
+            Libraries("CL", default_libs),
+            StringListOption(
+                "CXXFLAGS",
+                default_cxxflags,
+                help="Any extra C++ compiler options to include",
+            ),
+            StringListOption(
+                "LDFLAGS", default_ldflags, help="Any extra linker options to include"
+            ),
+        ]
+    )
+
+
 def get_config(schema=None, warn_about_no_config=True):
     if schema is None:
-        from setup import get_config_schema
-
         schema = get_config_schema()
 
     if (
@@ -727,8 +821,6 @@ def make_boost_base_options():
 
 def configure_frontend():
     from optparse import OptionParser
-
-    from setup import get_config_schema
 
     schema = get_config_schema()
     if schema.have_config():
