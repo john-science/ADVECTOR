@@ -1,0 +1,19 @@
+name: Unit Tests
+on:
+    push:
+        branches:
+        - main
+    pull_request:
+
+jobs:
+    pytest:
+        name: Pytest Linux POCL
+        runs-on: ubuntu-latest
+        steps:
+        -   uses: actions/checkout@v2
+        -   name: "Main Script"
+            run: |
+                CONDA_ENVIRONMENT=.test-conda-env-py3.yml
+                curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/main/build-and-test-py-project-within-miniconda.sh
+                ./configure.py --cl-use-shipped-ext
+                . ./build-and-test-py-project-within-miniconda.sh
