@@ -27,9 +27,7 @@ jobs:
               conda install ocl-icd-system -y
               conda install oclgrind -y
               conda install intel-compute-runtime -y
-              conda install beignet -y
-              # set an environment variable
-              #PYOPENCL_CTX='0'
+              #conda install beignet -y
               # run the unit tests
               python -m pytest tests/src/
 
