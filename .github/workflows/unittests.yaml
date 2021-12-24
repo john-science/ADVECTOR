@@ -29,7 +29,7 @@ jobs:
               conda install intel-compute-runtime -y
               conda install beignet -y
               # set an environment variable
-              PYOPENCL_CTX='0'
+              #PYOPENCL_CTX='0'
               # run the unit tests
               python -m pytest tests/src/
 
