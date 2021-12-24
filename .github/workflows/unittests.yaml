@@ -26,7 +26,7 @@ jobs:
               conda install pocl -y
               conda install ocl-icd-system -y
               conda install oclgrind -y
-              conda install intel-compute-runtime -y
+              #conda install intel-compute-runtime -y
               #conda install beignet -y
               # run the unit tests
               python -m pytest tests/src/
