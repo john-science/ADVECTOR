@@ -27,6 +27,8 @@ jobs:
               conda install ocl-icd-system -y
               conda install oclgrind -y
               conda install xarray -y
+              conda install pip -y
+              pip install .
               # run the unit tests
               python -m pytest tests/integration_tests/test_circular_drift.py
 
